@@ -117,10 +117,10 @@ syntax keyword ledgerTodo FIXME TODO
 highlight default link ledgerComment Comment
 highlight default link ledgerBlockComment Comment
 highlight default link ledgerBlockTest Comment
-highlight default link ledgerTransactionDate Constant
+highlight default link ledgerTransactionDate Function
 highlight default link ledgerTransactionExpression Statement
-highlight default link ledgerTransactionMetadata Tag
-highlight default link ledgerPostingMetadata Tag
+highlight default link ledgerTransactionMetadata Type
+highlight default link ledgerPostingMetadata Comment
 highlight default link ledgerTypedTag Keyword
 highlight default link ledgerValueTag Type
 highlight default link ledgerTag Type
@@ -130,11 +130,11 @@ highlight default link ledgerTagSep Delimiter
 highlight default link ledgerStartApply Tag
 highlight default link ledgerEndApply Tag
 highlight default link ledgerApplyHead Type
-highlight default link ledgerAccount Identifier
-highlight default link ledgerAmount Number
+" highlight default link ledgerAccount Function
+highlight default link ledgerAmount String
 highlight default link ledgerValueExpression Function
 highlight default link ledgerPreDeclarationType Type
-highlight default link ledgerPreDeclarationName Identifier
+highlight default link ledgerPreDeclarationName Function
 highlight default link ledgerPreDeclarationDirective Type
 highlight default link ledgerDirective Type
 highlight default link ledgerOneCharDirective Type
