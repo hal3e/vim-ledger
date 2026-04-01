@@ -1,9 +1,12 @@
-" Vim filetype plugin file
-" filetype: ledger
-" by Johann Klähn; Use according to the terms of the GPL>=2.
-" vim:ts=2:sw=2:sts=2:foldmethod=marker
+" SPDX-FileCopyrightText: © 2019 Caleb Maclennan <caleb@alerque.com>
+" SPDX-FileCopyrightText: © 2009 Johann Klähn <kljohann@gmail.com>
+" SPDX-FileCopyrightText: © 2009 Stefan Karrmann
+" SPDX-FileCopyrightText: © 2005 Wolfgang Oertl
+" SPDX-License-Identifier: GPL-2.0-or-later
 
 scriptencoding utf-8
+
+call ledger#init()
 
 if exists('b:did_ftplugin')
   finish
@@ -13,223 +16,65 @@ let b:did_ftplugin = 1
 
 let b:undo_ftplugin = 'setlocal '.
                     \ 'foldtext< '.
-                    \ 'include< comments< commentstring< omnifunc< formatprg<'
+                    \ 'include< comments< commentstring< omnifunc< formatexpr< formatprg<'
 
-setl foldtext=LedgerFoldText()
-setl include=^!\\?include
-setl comments=b:;
-setl commentstring=;%s
-setl omnifunc=LedgerComplete
-setl formatexpr=ledger#align_formatexpr(v:lnum,v:count)
+setlocal foldtext=LedgerFoldText()
+setlocal include=^!\\?include
+setlocal comments=b:;
+setlocal commentstring=;%s
+setlocal omnifunc=LedgerComplete
+setlocal formatexpr=ledger#align_formatexpr(v:lnum,v:count)
 
-if !exists('g:ledger_main')
-  let g:ledger_main = '%'
+" Automatic formatting is disabled by default because it can cause data loss when run
+" on non-transaction blocks, see https://github.com/ledger/vim-ledger/issues/168.
+if b:ledger_dangerous_formatprg
+  execute 'setlocal formatprg='.substitute(b:ledger_bin, ' ', '\\ ', 'g').'\ -f\ -\ print'
+  setlocal formatexpr=
 endif
-
-if exists('g:ledger_no_bin') && g:ledger_no_bin
-	unlet! g:ledger_bin
-elseif !exists('g:ledger_bin') || empty(g:ledger_bin)
-  if executable('hledger')
-    let g:ledger_bin = 'hledger'
-  elseif executable('ledger')
-    let g:ledger_bin = 'ledger'
-  else
-    unlet! g:ledger_bin
-    echohl WarningMsg
-    echomsg 'No ledger command detected, set g:ledger_bin to enable more vim-ledger features.'
-    echohl None
-  endif
-elseif !executable(g:ledger_bin)
-	unlet! g:ledger_bin
-	echohl WarningMsg
-	echomsg 'Command set in g:ledger_bin is not executable, fix to to enable more vim-ledger features.'
-	echohl None
-endif
-
-if exists('g:ledger_bin') && !exists('g:ledger_is_hledger')
-  let g:ledger_is_hledger = g:ledger_bin =~# '.*hledger'
-endif
-
-if exists('g:ledger_bin')
-  exe 'setl formatprg='.substitute(g:ledger_bin, ' ', '\\ ', 'g').'\ -f\ -\ print'
-endif
-
-if !exists('g:ledger_extra_options')
-  let g:ledger_extra_options = ''
-endif
-
-if !exists('g:ledger_date_format')
-  let g:ledger_date_format = '%Y/%m/%d'
-endif
-
-" You can set a maximal number of columns the fold text (excluding amount)
-" will use by overriding g:ledger_maxwidth in your .vimrc.
-" When maxwidth is zero, the amount will be displayed at the far right side
-" of the screen.
-if !exists('g:ledger_maxwidth')
-  let g:ledger_maxwidth = 0
-endif
-
-if !exists('g:ledger_fillstring')
-  let g:ledger_fillstring = ' '
-endif
-
-if !exists('g:ledger_accounts_cmd')
-  if exists('g:ledger_bin')
-    let g:ledger_accounts_cmd = g:ledger_bin . ' -f ' . shellescape(expand(g:ledger_main)) . ' accounts'
-  endif
-endif
-
-if !exists('g:ledger_descriptions_cmd')
-  if exists('g:ledger_bin')
-    if g:ledger_is_hledger
-      let g:ledger_descriptions_cmd = g:ledger_bin . ' -f ' . shellescape(expand(g:ledger_main)) . ' descriptions'
-    else
-      let g:ledger_descriptions_cmd = g:ledger_bin . ' -f ' . shellescape(expand(g:ledger_main)) . ' payees'
-    endif
-  endif
-endif
-
-if !exists('g:ledger_decimal_sep')
-  let g:ledger_decimal_sep = '.'
-endif
-
-if !exists('g:ledger_align_last')
-  let g:ledger_align_last = v:false
-endif
-
-if !exists('g:ledger_align_at')
-  let g:ledger_align_at = 60
-endif
-
-if !exists('g:ledger_align_commodity')
-  let g:ledger_align_commodity = 0
-endif
-
-if !exists('g:ledger_default_commodity')
-  let g:ledger_default_commodity = ''
-endif
-
-if !exists('g:ledger_commodity_before')
-  let g:ledger_commodity_before = 1
-endif
-
-if !exists('g:ledger_commodity_sep')
-  let g:ledger_commodity_sep = ''
-endif
-
-" If enabled this will list the most detailed matches at the top {{{
-" of the completion list.
-" For example when you have some accounts like this:
-"   A:Ba:Bu
-"   A:Bu:Bu
-" and you complete on A:B:B normal behaviour may be the following
-"   A:B:B
-"   A:Bu:Bu
-"   A:Bu
-"   A:Ba:Bu
-"   A:Ba
-"   A
-" with this option turned on it will be
-"   A:B:B
-"   A:Bu:Bu
-"   A:Ba:Bu
-"   A:Bu
-"   A:Ba
-"   A
-" }}}
-if !exists('g:ledger_detailed_first')
-  let g:ledger_detailed_first = 1
-endif
-
-" only display exact matches (no parent accounts etc.)
-if !exists('g:ledger_exact_only')
-  let g:ledger_exact_only = 0
-endif
-
-" display original text / account name as completion
-if !exists('g:ledger_include_original')
-  let g:ledger_include_original = 0
-endif
-
-" Settings for Ledger reports {{{
-if !exists('g:ledger_winpos')
-  let g:ledger_winpos = 'B'  " Window position (see s:winpos_map)
-endif
-
-if !exists('g:ledger_use_location_list')
-  let g:ledger_use_location_list = 0  " Use quickfix list by default
-endif
-
-if !exists('g:ledger_cleared_string')
-  let g:ledger_cleared_string = 'Cleared: '
-endif
-
-if !exists('g:ledger_pending_string')
-  let g:ledger_pending_string = 'Cleared or pending: '
-endif
-
-if !exists('g:ledger_target_string')
-  let g:ledger_target_string = 'Difference from target: '
-endif
-" }}}
-
-" Settings for the quickfix window {{{
-if !exists('g:ledger_qf_register_format')
-  let g:ledger_qf_register_format =
-				\ '%(date) %(justify(payee, 50)) '.
-				\	'%(justify(account, 30)) %(justify(amount, 15, -1, true)) '.
-				\	'%(justify(total, 15, -1, true))\n'
-endif
-
-if !exists('g:ledger_qf_reconcile_format')
-  let g:ledger_qf_reconcile_format =
-				\ '%(date) %(justify(code, 4)) '.
-				\ '%(justify(payee, 50)) %(justify(account, 30)) '.
-				\ '%(justify(amount, 15, -1, true))\n'
-endif
-
-if !exists('g:ledger_qf_size')
-  let g:ledger_qf_size = 10  " Size of the quickfix window
-endif
-
-if !exists('g:ledger_qf_vertical')
-  let g:ledger_qf_vertical = 0
-endif
-
-if !exists('g:ledger_qf_hide_file')
-  let g:ledger_qf_hide_file = 1
-endif
-" }}}
 
 if !exists('current_compiler')
   compiler ledger
 endif
 
-" Highlight groups for Ledger reports {{{
-hi link LedgerNumber Number
-hi link LedgerNegativeNumber Special
-hi link LedgerCleared Constant
-hi link LedgerPending Todo
-hi link LedgerTarget Statement
-hi link LedgerImproperPerc Special
-" }}}
+" Highlight groups for Ledger reports
+highlight default link LedgerNumber Number
+highlight default link LedgerNegativeNumber Special
+highlight default link LedgerCleared Constant
+highlight default link LedgerPending Todo
+highlight default link LedgerTarget Statement
+highlight default link LedgerImproperPerc Special
 
-let s:rx_amount = '\('.
-                \   '\%([0-9]\+\)'.
-                \   '\%([,.][0-9]\+\)*'.
-                \ '\|'.
-                \   '[,.][0-9]\+'.
-                \ '\)'.
-                \ '\s*\%([[:alpha:]¢$€£]\+\s*\)\?'.
+let s:currency_symbol = '[[:alpha:]¢$€£]\+'
+let s:value_regex = '\('.
+             \   '\%([0-9]\+\)'.
+             \   '\%([,.][0-9]\+\)*'.
+             \ '\|'.
+             \   '[,.][0-9]\+'.
+             \ '\)'
+let s:optional_sign = '[+-]\?'
+let s:currency_sign = '\('.
+             \   s:optional_sign.
+             \   '\s*'.
+             \   s:currency_symbol.
+             \ '\|'.
+             \   s:currency_symbol.
+             \   '\s*'.
+             \   s:optional_sign.
+             \ '\)'
+
+let s:optional_balance_assertion = '\(\s*=\s*'.s:currency_sign.'\s*'.s:value_regex.'\)\?'
+
+let s:rx_amount = s:value_regex.
+                \ s:optional_balance_assertion.
+                \ '\s*\%('.s:currency_symbol.'\s*\)\?'.
                 \ '\%(\s*;.*\)\?$'
 
-function! LedgerFoldText() "{{{1
+function! LedgerFoldText()
   " find amount
   let amount = ''
-  let lnum = v:foldstart + 1
-  while lnum <= v:foldend
-    let line = getline(lnum)
+  let line_number = v:foldstart + 1
+  while line_number <= v:foldend
+    let line = getline(line_number)
 
     " Skip metadata/leading comment
     if line !~# '^\%(\s\+;\|\d\)'
@@ -240,7 +85,7 @@ function! LedgerFoldText() "{{{1
         break
       endif
     endif
-    let lnum += 1
+    let line_number += 1
   endwhile
 
   " strip whitespace at beginning and end of line
@@ -249,8 +94,8 @@ function! LedgerFoldText() "{{{1
 
   " number of columns foldtext can use
   let columns = s:get_columns()
-  if g:ledger_maxwidth
-    let columns = min([columns, g:ledger_maxwidth])
+  if b:ledger_maxwidth
+    let columns = min([columns, b:ledger_maxwidth])
   endif
 
   let amount = printf(' %s ', amount)
@@ -275,8 +120,8 @@ function! LedgerFoldText() "{{{1
   endif
 
   " fill in the fillstring
-  if strlen(g:ledger_fillstring)
-    let fillstring = g:ledger_fillstring
+  if strlen(b:ledger_fillstring)
+    let fillstring = b:ledger_fillstring
   else
     let fillstring = ' '
   endif
@@ -295,47 +140,59 @@ function! LedgerFoldText() "{{{1
   let foldtext .= fillstring
 
   return foldtext . amount
-endfunction "}}}
+endfunction
 
-function! LedgerComplete(findstart, base) "{{{1
+function! LedgerComplete(findstart, base)
   if a:findstart
-    let lnum = line('.')
+    let line_number = line('.')
     let line = getline('.')
-    let b:compl_context = ''
-    if line =~# '^\s\+[^[:blank:];]' "{{{2 (account)
+    let b:completion_context = ''
+    if line =~# '^\s\+[^[:blank:];]'
       " only allow completion when in or at end of account name
       if matchend(line, '^\s\+\%(\S \S\|\S\)\+') >= col('.') - 1
         " the start of the first non-blank character
         " (excluding virtual-transaction and 'cleared' marks)
         " is the beginning of the account name
-        let b:compl_context = 'account'
+        let b:completion_context = 'account'
         return matchend(line, '^\s\+[*!]\?\s*[\[(]\?')
       endif
-    elseif line =~# '^\d' "{{{2 (description)
-      let pre = matchend(line, '^\d\S\+\%(([^)]*)\|[*?!]\|\s\)\+')
-      if pre < col('.') - 1
-        let b:compl_context = 'description'
-        return pre
+    elseif line =~# '^account '
+        let prefix = matchend(line, '^account ')
+        let b:completion_context = 'account'
+        return prefix
+    elseif line =~# '^\d'
+      let prefix = matchend(line, '^\d\S\+\%\(\s\(([^\)]*)\|[*?!]\)\)\?\s\+')
+      if prefix <= col('.') - 1
+        let b:completion_context = 'description'
+        if prefix == -1
+          return -3
+        endif
+        return prefix
       endif
-    elseif line =~# '^$' "{{{2 (new line)
-      let b:compl_context = 'new'
-    endif "}}}
-    return -1
+    elseif b:ledger_is_hledger && line =~# '^payee '
+      let prefix = matchend(line, '^payee ')
+      let b:completion_context = 'description'
+      return prefix
+    elseif line =~# '^$'
+      let b:completion_context = 'new'
+      return 0
+    endif
+    return -3
   else
-    if ! exists('b:compl_cache')
-      let b:compl_cache = s:collect_completion_data()
-      let b:compl_cache['#'] = changenr()
+    if ! exists('b:completion_cache')
+      let b:completion_cache = s:collect_completion_data()
+      let b:completion_cache['#'] = changenr()
     endif
     let update_cache = 0
 
     let results = []
-    if b:compl_context ==# 'account' "{{{2 (account)
+    if b:completion_context ==# 'account'
       let hierarchy = split(a:base, ':')
       if a:base =~# ':$'
         call add(hierarchy, '')
       endif
 
-      let results = ledger#find_in_tree(b:compl_cache.accounts, hierarchy)
+      let results = ledger#find_in_tree(b:completion_cache.accounts, hierarchy)
       let exacts = filter(copy(results), 'v:val[1]')
 
       if len(exacts) < 1
@@ -343,88 +200,67 @@ function! LedgerComplete(findstart, base) "{{{1
         let update_cache = 1
       endif
 
-      if g:ledger_exact_only
+      if b:ledger_exact_only
         let results = exacts
       endif
 
       call map(results, 'v:val[0]')
 
-      if g:ledger_detailed_first
+      if b:ledger_fuzzy_account_completion
+        let results = matchfuzzy(b:completion_cache.flat_accounts, a:base, {'matchseq':1})
+      elseif b:ledger_detailed_first
         let results = reverse(sort(results, 's:sort_accounts_by_depth'))
       else
         let results = sort(results)
       endif
-    elseif b:compl_context ==# 'description' "{{{2 (description)
-      let results = ledger#filter_items(b:compl_cache.descriptions, a:base)
+    elseif b:completion_context ==# 'description'
+      let results = ledger#filter_items(b:completion_cache.descriptions, a:base)
 
       if len(results) < 1
         let update_cache = 1
       endif
-    elseif b:compl_context ==# 'new' "{{{2 (new line)
-      return [strftime(g:ledger_date_format)]
-    endif "}}}
+    elseif b:completion_context ==# 'new'
+      return [strftime(b:ledger_date_format)]
+    endif
 
 
-    if g:ledger_include_original
+    if b:ledger_include_original
       call insert(results, a:base)
     endif
 
     " no completion (apart from a:base) found. update cache if file has changed
-    if update_cache && b:compl_cache['#'] != changenr()
-      unlet b:compl_cache
+    if update_cache && b:completion_cache['#'] != changenr()
+      unlet b:completion_cache
       return LedgerComplete(a:findstart, a:base)
     else
-      unlet! b:compl_context
+      unlet! b:completion_context
       return results
     endif
   endif
-endf "}}}
+endfunction
 
-" Deprecated functions {{{1
-let s:deprecated = {
-  \ 'LedgerToggleTransactionState': 'ledger#transaction_state_toggle',
-  \ 'LedgerSetTransactionState': 'ledger#transaction_state_set',
-  \ 'LedgerSetDate': 'ledger#transaction_date_set'
-  \ }
-
-for [s:old, s:new] in items(s:deprecated)
-  let s:fun = "function! {s:old}(...)\nechohl WarningMsg\necho '" . s:old .
-            \ ' is deprecated. Use '.s:new." instead!'\nechohl None\n" .
-            \ "call call('" . s:new . "', a:000)\nendf"
-  exe s:fun
-endfor
-unlet s:old s:new s:fun
-" }}}1
-
-function! s:collect_completion_data() "{{{1
+function! s:collect_completion_data()
   let transactions = ledger#transactions()
-  let cache = {'descriptions': [], 'tags': {}, 'accounts': {}}
-  if exists('g:ledger_accounts_cmd')
-    let accounts = systemlist(g:ledger_accounts_cmd)
-  else
-    let accounts = ledger#declared_accounts()
-  endif
-  if exists('g:ledger_descriptions_cmd')
-    let cache.descriptions = systemlist(g:ledger_descriptions_cmd)
-  endif
-  for xact in transactions
-    if !exists('g:ledger_descriptions_cmd')
-      " collect descriptions
-      if has_key(xact, 'description') && index(cache.descriptions, xact['description']) < 0
-        call add(cache.descriptions, xact['description'])
-      endif
-    endif
-    let [t, postings] = xact.parse_body()
-    let tagdicts = [t]
+  let cache = {'descriptions': [], 'tags': {}, 'accounts': {}, 'flat_accounts': []}
 
-		" collect account names
-    if !exists('g:ledger_accounts_cmd')
+  let accounts = s:get_accounts_list()
+  let cache.flat_accounts = accounts
+  let cache.descriptions = s:get_descriptions_list()
+
+  for transaction in transactions
+    let [tags, postings] = transaction.parse_body()
+    let tagdicts = [tags]
+
+    " collect account names (only when not using ledger binary)
+    if b:ledger_bin ==# v:false
       for posting in postings
         if has_key(posting, 'tags')
           call add(tagdicts, posting.tags)
         endif
         " remove virtual-transaction-marks
-        let name = substitute(posting.account, '\%(^\s*[\[(]\?\|[\])]\?\s*$\)', '', 'g')
+        let name = substitute(posting.account, '^\s*|\s*$', '', 'g')
+        let name = substitute(name, '^(.*)$', '\1', '')
+        let name = substitute(name, '^\[.*\]$', '\1', '')
         if index(accounts, name) < 0
           call add(accounts, name)
         endif
@@ -450,17 +286,35 @@ function! s:collect_completion_data() "{{{1
   endfor
 
   return cache
-endf "}}}
+endfunction
 
-" Helper functions {{{1
+function! s:get_accounts_list()
+  if b:ledger_bin !=# v:false
+    return split(system(b:ledger_accounts_cmd), '\n')
+  else
+    return ledger#declared_accounts()
+  endif
+endfunction
 
-" return length of string with fix for multibyte characters
-function! s:multibyte_strlen(text) "{{{2
-   return strlen(substitute(a:text, '.', 'x', 'g'))
-endfunction "}}}
+function! s:get_descriptions_list()
+  if b:ledger_bin !=# v:false
+    return split(system(b:ledger_descriptions_cmd), '\n')
+  else
+    let transactions = ledger#transactions()
+    let descriptions = []
+    for xact in transactions
+      if has_key(xact, 'description') && index(descriptions, xact['description']) < 0
+        call add(descriptions, xact['description'])
+      endif
+    endfor
+    return descriptions
+  endif
+endfunction
+
+" Helper functions
 
 " get # of visible/usable columns in current window
-function! s:get_columns() " {{{2
+function! s:get_columns()
   " As long as vim doesn't provide a command natively,
   " we have to compute the available columns.
   " see :help todo.txt -> /Add argument to winwidth()/
@@ -480,49 +334,49 @@ function! s:get_columns() " {{{2
   endif
 
   return columns
-endf "}}}
+endfunction
 
-function! s:sort_accounts_by_depth(name1, name2) "{{{2
+function! s:sort_accounts_by_depth(name1, name2)
   let depth1 = s:count_expression(a:name1, ':')
   let depth2 = s:count_expression(a:name2, ':')
   return depth1 == depth2 ? 0 : depth1 > depth2 ? 1 : -1
-endf "}}}
+endfunction
 
-function! s:count_expression(text, expression) "{{{2
+function! s:count_expression(text, expression)
   return len(split(a:text, a:expression, 1))-1
-endf "}}}
+endfunction
 
-function! s:autocomplete_account_or_payee(argLead, cmdLine, cursorPos) "{{{2
-  return (a:argLead =~# '^@') ?
-        \ map(filter(systemlist(g:ledger_bin . ' -f ' . shellescape(expand(g:ledger_main)) . ' payees'),
-        \ "v:val =~? '" . strpart(a:argLead, 1) . "' && v:val !~? '^Warning: '"), '"@" . escape(v:val, " ")')
-        \ :
-        \ map(filter(systemlist(g:ledger_bin . ' -f ' . shellescape(expand(g:ledger_main)) . ' accounts'),
-        \ "v:val =~? '" . a:argLead . "' && v:val !~? '^Warning: '"), 'escape(v:val, " ")')
-endf "}}}
+function! s:autocomplete_account_or_payee(argument_lead, command_line, cursor_position)
+  if a:argument_lead =~# '^@'
+    let payees = s:get_descriptions_list()
+    let pattern = strpart(a:argument_lead, 1)
+    return map(filter(payees, "v:val =~? '" . pattern . "' && v:val !~? '^Warning: '"),
+             \ '"@" . escape(v:val, " ")')
+  else
+    let accounts = s:get_accounts_list()
+    return map(filter(accounts, "v:val =~? '" . a:argument_lead . "' && v:val !~? '^Warning: '"),
+             \ 'escape(v:val, " ")')
+  endif
+endfunction
 
-function! s:reconcile(file, account) "{{{2
-  " call inputsave()
-  let l:amount = input('Target amount' . (empty(g:ledger_default_commodity) ? ': ' : ' (' . g:ledger_default_commodity . '): '))
-  " call inputrestore()
+function! s:reconcile(file, account)
+  let l:amount = input('Target amount' . (empty(b:ledger_default_commodity) ? ': ' : ' (' . b:ledger_default_commodity . '): '))
   call ledger#reconcile(a:file, a:account, str2float(l:amount))
-endf "}}}
+endfunction
 
-" Commands {{{1
-command! -buffer -nargs=? -complete=customlist,s:autocomplete_account_or_payee
-      \ Balance call ledger#show_balance(g:ledger_main, <q-args>)
+" Commands
+command! -buffer -nargs=? -complete=customlist,<SID>autocomplete_account_or_payee
+      \ Balance call ledger#show_balance(b:ledger_main, <q-args>)
 
-command! -buffer -nargs=+ -complete=customlist,s:autocomplete_account_or_payee
-      \ Ledger call ledger#output(ledger#report(g:ledger_main, <q-args>))
+command! -buffer -nargs=+ -complete=customlist,<SID>autocomplete_account_or_payee
+      \ Ledger call ledger#output(ledger#report(b:ledger_main, <q-args>))
 
 command! -buffer -range LedgerAlign <line1>,<line2>call ledger#align_commodity()
 
 command! -buffer LedgerAlignBuffer call ledger#align_commodity_buffer()
 
-command! -buffer -nargs=1 -complete=customlist,s:autocomplete_account_or_payee
-      \ Reconcile call <sid>reconcile(g:ledger_main, <q-args>)
+command! -buffer -nargs=1 -complete=customlist,<SID>autocomplete_account_or_payee
+      \ Reconcile call <SID>reconcile(b:ledger_main, <q-args>)
 
-command! -buffer -complete=customlist,s:autocomplete_account_or_payee -nargs=*
-      \ Register call ledger#register(g:ledger_main, <q-args>)
-" }}}
-
+command! -buffer -complete=customlist,<SID>autocomplete_account_or_payee -nargs=*
+      \ Register call ledger#register(b:ledger_main, <q-args>)

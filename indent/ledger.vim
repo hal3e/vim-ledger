@@ -1,17 +1,21 @@
-" Vim filetype indent file
-" filetype: ledger
-" by Johann Klähn; Use according to the terms of the GPL>=2.
-" vim:ts=2:sw=2:sts=2:foldmethod=marker
+" SPDX-FileCopyrightText: © 2019 Caleb Maclennan <caleb@alerque.com>
+" SPDX-FileCopyrightText: © 2009 Johann Klähn <kljohann@gmail.com>
+" SPDX-FileCopyrightText: © 2009 Stefan Karrmann
+" SPDX-FileCopyrightText: © 2005 Wolfgang Oertl
+" SPDX-License-Identifier: GPL-2.0-or-later
 
 scriptencoding utf-8
+
+call ledger#init()
 
 if exists('b:did_indent')
   finish
 endif
+
 let b:did_indent = 1
 
-setl autoindent
-setl indentexpr=GetLedgerIndent()
+setlocal autoindent
+setlocal indentexpr=GetLedgerIndent()
 
 if exists('*GetLedgerIndent')
   finish
@@ -45,4 +49,4 @@ function GetLedgerIndent(...)
     " start of transactions, pre-declarations, apply/end-lines
     return 0
   endif
-endf
+endfunction
